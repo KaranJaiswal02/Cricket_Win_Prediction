@@ -103,25 +103,42 @@ model.fit(X_train, y_train)
 
 
 # Function to Predict Match Outcome
+
 def predict_match(team1_name, team2_name, venue_name, toss_winner):
     if team1_name not in le_team.classes_ or team2_name not in le_team.classes_:
         raise ValueError("Invalid team name provided.")
-    if venue_name not in le_venue.classes_:
+
+    if venue_name not in le_venue.inverse_transform(range(len(le_venue.classes_))):
         raise ValueError("Invalid venue provided.")
-    
+
     team1 = le_team.transform([team1_name])[0]
     team2 = le_team.transform([team2_name])[0]
     venue = le_venue.transform([venue_name])[0]
+    
     home_advantage = 1 if venue == team1 else 0
     toss_winner = 1 if toss_winner == team1 else 0
+
+    # Use mean instead of zero for missing values
+    overall_team_strength = data[['team1_strength', 'team2_strength']].mean().mean()
+    overall_recent_form = data[['recent_form1', 'recent_form2']].mean().mean()
+
     team1_strength = data[data['team1'] == team1]['team1_strength'].mean()
     team2_strength = data[data['team2'] == team2]['team2_strength'].mean()
     recent_form1 = data[data['team1'] == team1]['recent_form1'].mean()
     recent_form2 = data[data['team2'] == team2]['recent_form2'].mean()
-    
-    input_data = np.array([[team1_strength==0.8, team2_strength==0.75, home_advantage==1, toss_winner==1, recent_form1==0.9, recent_form2==0.8]])
+
+    # Replace NaN with mean instead of zero
+    team1_strength = overall_team_strength if np.isnan(team1_strength) else team1_strength
+    team2_strength = overall_team_strength if np.isnan(team2_strength) else team2_strength
+    recent_form1 = overall_recent_form if np.isnan(recent_form1) else recent_form1
+    recent_form2 = overall_recent_form if np.isnan(recent_form2) else recent_form2
+
+    # Corrected input_data format
+    input_data = np.array([[team1_strength, team2_strength, home_advantage, toss_winner, recent_form1, recent_form2]])
+
     probability = model.predict_proba(input_data)[0][1]  # Probability of team1 winning
     print(f'Probability of {team1_name} Winning: {probability * 100:.2f}%')
     return probability
+
 
 predict_match("New Zealand", "Australia", "Melbourne", "Australia")
